@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { Zorikto } from "../src/zorikto";
+import { Zorikto } from "../lib/zorikto";
 import { createServer, getFreePort } from "./fixture/server";
 
 const MOCK = { a: { b: [3, 2, 1] } };
@@ -23,14 +23,16 @@ test("has a duration node", async (done) => {
 
   const client = new Zorikto({ baseUrl: `http://localhost:${port}` });
 
-  await client
-    .get(`/sleep/${SLEEP_TIME}`)
-    .then((result) => {
-      expect(result.status).toBe(200);
-      expect(result.duration).toBeNumber();
-      expect(result.duration).toBeGreaterThanOrEqual(SLEEP_TIME);
-      expect(result.duration).toBeLessThanOrEqual(SLEEP_TIME * 2);
-    })
-    .catch(done)
-    .finally(done);
+  try {
+    const result = await client.get(`/sleep/${SLEEP_TIME}`);
+
+    expect(result.status).toBe(200);
+    expect(result.duration).toBeNumber();
+    expect(result.duration).toBeGreaterThanOrEqual(SLEEP_TIME);
+    expect(result.duration).toBeLessThanOrEqual(SLEEP_TIME * 2);
+  } catch (error) {
+    done(error);
+  } finally {
+    done();
+  }
 });

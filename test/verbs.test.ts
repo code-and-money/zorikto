@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { Zorikto } from "../src/zorikto";
+import { Zorikto } from "../lib/zorikto";
 import { createServer, getFreePort } from "./fixture/server";
 
 let port: number;

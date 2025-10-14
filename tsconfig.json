@@ -5,11 +5,11 @@
     "target": "ESNext",
     "module": "Preserve",
     "moduleDetection": "force",
+    "outDir": "dist",
+    "declaration": true,
 
     // Bundler mode
-    "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
-    "noEmit": true,
 
     // Best practices
     "strict": true,

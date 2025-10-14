@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { Zorikto } from "../src/zorikto";
+import { Zorikto } from "../lib/zorikto";
 import { createServer, getFreePort } from "./fixture/server";
 
 const MOCK = { a: { b: [3, 2, 1] } };
@@ -22,9 +22,10 @@ test.each(["post", "put", "patch"] as const)("%s has proper data", async (method
   const client = new Zorikto({ baseUrl: `http://localhost:${port}` });
 
   try {
-    const response = await client[method]("/post", MOCK);
-    expect(response.status).toBe(200);
-    expect(response.body).toStrictEqual(MOCK);
+    const result = await client[method]("/post", { body: MOCK });
+
+    expect(result.status).toBe(200);
+    expect(result.body).toStrictEqual(MOCK);
   } catch (error) {
     done(error);
   } finally {

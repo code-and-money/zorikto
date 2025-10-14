@@ -3,6 +3,10 @@
   "version": "0.0.0-rc.1",
   "private": true,
   "license": "MIT",
+  "exports": {
+    "default": "./lib/zorikto.ts",
+    "import": "./lib/zorikto.ts"
+  },
   "dependencies": {
     "ky": "1.11.0"
   },

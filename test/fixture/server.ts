@@ -13,7 +13,7 @@ function send200(body?: any) {
   return sendResponse({ status: 200 }, body ?? JSON.stringify({ ok: true }));
 }
 
-export async function createServer(port: number, mockData: any = {}) {
+export async function createServer(port: number, mockData?: any) {
   const server = Bun.serve({
     port,
     fetch(request) {
@@ -29,8 +29,8 @@ export async function createServer(port: number, mockData: any = {}) {
       }
 
       if (path.startsWith("/number")) {
-        const statusCode = Number(path.slice(8, 11));
-        return sendResponse({ status: statusCode }, JSON.stringify(mockData));
+        const status = Number(path.slice(8, 11));
+        return sendResponse({ status }, mockData ? JSON.stringify(mockData) : undefined);
       }
 
       if (path.startsWith("/false")) {

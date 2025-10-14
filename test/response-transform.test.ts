@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { Zorikto } from "../src/zorikto";
+import { Zorikto } from "../lib/zorikto";
 import { createServer, getFreePort } from "./fixture/server";
 
 const MOCK = { a: { b: [3, 2, 1] } };
@@ -46,15 +46,17 @@ test("alters the response", async (done) => {
 
   expect(count).toBe(0);
 
-  await client
-    .get("/number/201")
-    .then((response) => {
-      expect(response.status).toBe(201);
-      expect(count).toBe(1);
-      expect(response.body).toStrictEqual(BODY_OVERWRITE);
-    })
-    .catch(done)
-    .finally(done);
+  try {
+    const result = await client.get("/number/201");
+
+    expect(result.status).toBe(201);
+    expect(count).toBe(1);
+    expect(result.body).toStrictEqual(BODY_OVERWRITE);
+  } catch (error) {
+    done(error);
+  } finally {
+    done();
+  }
 });
 
 test("swap out data on response", async (done) => {
@@ -71,15 +73,17 @@ test("swap out data on response", async (done) => {
 
   expect(count).toBe(0);
 
-  await client
-    .get("/number/201")
-    .then((response) => {
-      expect(response.status).toBe(222);
-      expect(count).toBe(1);
-      expect(response.body).toStrictEqual(BODY_OVERWRITE);
-    })
-    .catch(done)
-    .finally(done);
+  try {
+    const result = await client.get("/number/201");
+
+    expect(result.status).toBe(222);
+    expect(count).toBe(1);
+    expect(result.body).toStrictEqual(BODY_OVERWRITE);
+  } catch (error) {
+    done(error);
+  } finally {
+    done();
+  }
 });
 
 test("alters the response", async (done) => {
@@ -105,15 +109,17 @@ test("alters the response", async (done) => {
 
   expect(count).toBe(0);
 
-  await client
-    .get("/number/201")
-    .then((response) => {
-      expect(response.status).toBe(201);
-      expect(count).toBe(2);
-      expect(response.body).toStrictEqual(BODY_OVERWRITE);
-    })
-    .catch(done)
-    .finally(done);
+  try {
+    const result = await client.get("/number/201");
+
+    expect(result.status).toBe(201);
+    expect(count).toBe(2);
+    expect(result.body).toStrictEqual(BODY_OVERWRITE);
+  } catch (error) {
+    done(error);
+  } finally {
+    done();
+  }
 });
 
 test("swap out data on response", async (done) => {
@@ -141,13 +147,15 @@ test("swap out data on response", async (done) => {
 
   expect(count).toBe(0);
 
-  await client
-    .get("/number/201")
-    .then((response) => {
-      expect(response.status).toBe(222);
-      expect(count).toBe(2);
-      expect(response.body).toStrictEqual(BODY_OVERWRITE);
-    })
-    .catch(done)
-    .finally(done);
+  try {
+    const result = await client.get("/number/201");
+
+    expect(result.status).toBe(222);
+    expect(count).toBe(2);
+    expect(result.body).toStrictEqual(BODY_OVERWRITE);
+  } catch (error) {
+    done(error);
+  } finally {
+    done();
+  }
 });

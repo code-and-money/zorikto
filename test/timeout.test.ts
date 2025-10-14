@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { TIMEOUT_ERROR, Zorikto } from "../src/zorikto";
+import { TIMEOUT_ERROR, Zorikto } from "../lib/zorikto";
 import { createServer, getFreePort } from "./fixture/server";
 
 let port: number;
@@ -20,10 +20,10 @@ test("times out", async (done) => {
   const client = new Zorikto({ baseUrl: `http://localhost:${port}`, timeout: 100 });
 
   try {
-    await client.get("/sleep/150").then((response) => {
-      expect(response.ok).toBeFalse();
-      expect(response.issue).toBe(TIMEOUT_ERROR);
-    });
+    const result = await client.get("/sleep/150");
+
+    expect(result.ok).toBeFalse();
+    expect(result.issue).toBe(TIMEOUT_ERROR);
   } catch (error) {
     done(error);
   } finally {

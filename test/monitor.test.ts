@@ -1,5 +1,5 @@
-import { afterAll, beforeAll, expect, test } from "bun:test";
-import { Zorikto } from "../src/zorikto";
+import { afterAll, beforeAll, expect, vi, test } from "bun:test";
+import { Zorikto } from "../lib/zorikto";
 import { createServer, getFreePort } from "./fixture/server";
 
 const MOCK = { a: { b: [3, 2, 1] } };
@@ -25,7 +25,7 @@ test("attaches a monitor", async (done) => {
   expect(client.monitors).toBeTruthy();
 
   expect(client.monitors.length).toBe(0);
-  client.on("monitor", console.log);
+  client.on("monitor", vi.fn());
   expect(client.monitors.length).toBe(1);
 
   done();
@@ -48,14 +48,14 @@ test("fires our monitor function", async (done) => {
   expect(b).toBeUndefined();
 
   try {
-    await client.get("/number/201").then((response) => {
-      expect(response.status).toBe(201);
+    await client.get("/number/201").then((result) => {
+      expect(result.status).toBe(201);
       expect(a).toBe(1);
       expect(b).toBe(201);
     });
 
-    await client.get("/number/204").then((response) => {
-      expect(response.status).toBe(204);
+    await client.get("/number/204").then((result) => {
+      expect(result.status).toBe(204);
       expect(a).toBe(2);
       expect(b).toBe(204);
     });

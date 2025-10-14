@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { Zorikto } from "../src/zorikto";
+import { Zorikto } from "../lib/zorikto";
 import { createServer, getFreePort } from "./fixture/server";
 
 const MOCK = { a: { b: [3, 2, 1] } };
@@ -24,7 +24,7 @@ test("jumps the wire with the right headers", async (done) => {
   try {
     Object.entries({ "X-I-LOVE-BUN": "foo", jhonny: "hey" }).forEach(([key, value]) => client.headers.set(key, value));
 
-    const result = await client.get("/number/200", { a: "b" });
+    const result = await client.get("/number/200", { body: { a: "b" } });
 
     expect(result?.options?.headers?.get("X-I-LOVE-BUN")).toBe("foo");
     expect(result?.options?.headers?.get("jhonny")).toBe("hey");

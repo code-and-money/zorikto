@@ -1,14 +1,5 @@
 import ky, { HTTPError, TimeoutError, type KyInstance, type Options, type ResponsePromise } from "ky";
 
-const DEFAULT_HEADERS = {
-  Accept: "application/json",
-  "Content-Type": "application/json",
-};
-
-const DEFAULT_CONFIG: Options = {
-  timeout: 10_000,
-};
-
 export class ZoriktoError extends Error {
   constructor(
     message: string,
@@ -17,21 +8,6 @@ export class ZoriktoError extends Error {
     super(message);
   }
 }
-
-export const ERRORS = Object.freeze({
-  NONE: "NONE",
-  CLIENT_ERROR: "CLIENT_ERROR",
-  SERVER_ERROR: "SERVER_ERROR",
-  TIMEOUT_ERROR: "TIMEOUT_ERROR",
-  CONNECTION_ERROR: "CONNECTION_ERROR",
-  NETWORK_ERROR: "NETWORK_ERROR",
-  UNKNOWN_ERROR: "UNKNOWN_ERROR",
-  ABORT_ERROR: "ABORT_ERROR",
-
-  TIMEOUT_ERROR_CODES: ["ECONNABORTED"] as const,
-  NODEJS_CONNECTION_ERROR_CODES: ["ENOTFOUND", "ECONNREFUSED", "ECONNRESET"] as const,
-  STATUS_ERROR_CODES: ["ERR_BAD_REQUEST", "ERR_BAD_RESPONSE"] as const,
-});
 
 export const NONE = "NONE";
 export const CLIENT_ERROR = "CLIENT_ERROR";
@@ -42,9 +18,9 @@ export const NETWORK_ERROR = "NETWORK_ERROR";
 export const UNKNOWN_ERROR = "UNKNOWN_ERROR";
 export const ABORT_ERROR = "ABORT_ERROR";
 
-export const TIMEOUT_ERROR_CODES = ["ECONNABORTED"];
-export const NODEJS_CONNECTION_ERROR_CODES = ["ENOTFOUND", "ECONNREFUSED", "ECONNRESET"];
-export const STATUS_ERROR_CODES = ["ERR_BAD_REQUEST", "ERR_BAD_RESPONSE"];
+export const TIMEOUT_ERROR_CODES = ["ECONNABORTED"] as const;
+export const NODEJS_CONNECTION_ERROR_CODES = ["ENOTFOUND", "ECONNREFUSED", "ECONNRESET"] as const;
+export const STATUS_ERROR_CODES = ["ERR_BAD_REQUEST", "ERR_BAD_RESPONSE"] as const;
 
 // -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 //
@@ -52,34 +28,39 @@ export const STATUS_ERROR_CODES = ["ERR_BAD_REQUEST", "ERR_BAD_RESPONSE"];
 //
 // -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 export class Zorikto {
-  ky: KyInstance;
+  public ky: KyInstance;
 
-  headers: Headers;
+  public headers: Headers;
   private baseUrl: URL;
 
   private configWithoutHeaders: Record<string, any>;
   private configCombined: Record<string, any>;
 
-  monitors: Monitor[] = [];
-  requestTransformers: RequestTransformer[] = [];
-  responseTransformers: ResponseTransformer[] = [];
+  public monitors: Monitor[] = [];
+  public requestTransformers: RequestTransformer[] = [];
+  public responseTransformers: ResponseTransformer[] = [];
 
-  constructor({ baseUrl, ...options }: Options & { baseUrl: string; kyInstance?: KyInstance }) {
-    this.headers = new Headers({ ...DEFAULT_HEADERS, ...(options.headers ?? {}) });
+  constructor({
+    baseUrl,
+    ...options
+  }: Omit<CustomKyOptions, "headers"> & { headers?: Record<string, string> | [string, string][] } & { baseUrl: string; kyInstance?: KyInstance }) {
+    this.headers = new Headers({ Accept: "application/json", "Content-Type": "application/json" });
+    const headers = new Headers(options.headers ?? {});
+    headers.forEach((value, key) => this.headers.set(key, value));
     this.baseUrl = new URL(baseUrl);
     this.configWithoutHeaders = { ...options, headers: undefined };
-    this.configCombined = { ...DEFAULT_CONFIG, ...this.configWithoutHeaders };
+    this.configCombined = { timeout: 10_000, ...this.configWithoutHeaders };
     this.ky = options.kyInstance ? options.kyInstance : ky.create(this.configCombined);
   }
 
-  public setBaseURL(baseUrl: URL | string): Zorikto {
+  public setBaseUrl(baseUrl: URL | string): Zorikto {
     this.baseUrl = new URL(baseUrl);
     return this;
   }
 
-  public getBaseURL(returnAs: "url"): URL;
-  public getBaseURL(returnAs?: "string" | undefined): string;
-  public getBaseURL(returnAs?: "string" | "url") {
+  public getBaseUrl(returnAs: "url"): URL;
+  public getBaseUrl(returnAs?: "string" | undefined): string;
+  public getBaseUrl(returnAs?: "string" | "url") {
     return returnAs === "url" ? this.baseUrl : this.baseUrl.toString();
   }
 
@@ -99,32 +80,45 @@ export class Zorikto {
     return this;
   }
 
-  private doRequestWithoutBody(method: "get" | "head" | "delete" | "link" | "unlink"): RequestWithoutBody {
-    return (url, searchParams, options) =>
-      this.doRequest(url, {
-        ...options,
-        searchParams: searchParams ? new URLSearchParams(searchParams as any) : new URLSearchParams(),
-        method,
-      });
+  public post<T>(url: string, options?: ZoriktoOptions): Promise<ZoriktoResult<T>> {
+    return this.request<T>(url, this.refineOptions({ ...options, method: "post" }));
+  }
+  public put<T>(url: string, options?: ZoriktoOptions): Promise<ZoriktoResult<T>> {
+    return this.request<T>(url, this.refineOptions({ ...options, method: "put" }));
+  }
+  public patch<T>(url: string, options?: ZoriktoOptions): Promise<ZoriktoResult<T>> {
+    return this.request<T>(url, this.refineOptions({ ...options, method: "patch" }));
+  }
+  public get<T>(url: string, options?: ZoriktoOptions): Promise<ZoriktoResult<T>> {
+    return this.request<T>(url, this.refineOptions({ ...options, method: "get" }));
+  }
+  public delete<T>(url: string, options?: ZoriktoOptions): Promise<ZoriktoResult<T>> {
+    return this.request<T>(url, this.refineOptions({ ...options, method: "delete" }));
+  }
+  public head<T>(url: string, options?: ZoriktoOptions): Promise<ZoriktoResult<T>> {
+    return this.request<T>(url, this.refineOptions({ ...options, method: "head" }));
+  }
+  public link<T>(url: string, options?: ZoriktoOptions): Promise<ZoriktoResult<T>> {
+    return this.request<T>(url, this.refineOptions({ ...options, method: "link" }));
+  }
+  public unlink<T>(url: string, options?: ZoriktoOptions): Promise<ZoriktoResult<T>> {
+    return this.request<T>(url, this.refineOptions({ ...options, method: "unlink" }));
   }
 
-  private doRequestWithBody(method: "post" | "put" | "patch"): RequestWithBody {
-    return (url, body, options) =>
-      this.doRequest(url, {
-        ...options,
-        searchParams: options?.searchParams ? new URLSearchParams(options.searchParams as any) : new URLSearchParams(),
-        method,
-        body: JSON.stringify(body),
-      });
+  private refineOptions(options: ZoriktoOptions | undefined): CustomKyOptions {
+    return {
+      ...options,
+      searchParams: options?.searchParams ? new URLSearchParams(options.searchParams as any) : new URLSearchParams(),
+      body: options?.body && ["post", "put", "patch"].includes(options.method ?? "get") ? options.body : undefined,
+    };
   }
 
-  private async doRequest(url: string, options: CustomKyOptions) {
+  private async request<T>(url: string, { body, ...options }: CustomKyOptions): Promise<ZoriktoResult<T>> {
     const headers = new Headers();
-
     this.headers.forEach((value, key) => headers.set(key, value));
     options.headers?.forEach((value, key) => headers.set(key, value));
 
-    const context = { url, options: { ...options, headers } };
+    const context = { url, options: { ...options, headers, body } };
 
     for (const transformer of this.requestTransformers) {
       const transform = transformer(context);
@@ -143,27 +137,17 @@ export class Zorikto {
     const startTime = toNumber(new Date());
 
     const chain = async (result: Awaited<ResponsePromise<unknown>>, options: CustomKyOptions) => {
-      const convertedResponse = await convertResponse({ result, startTime, options, responseTransformers: this.responseTransformers });
+      const convertedResponse = await convertResponse<T>({ result, startTime, options, responseTransformers: this.responseTransformers });
       runMonitors(convertedResponse, this.monitors);
       return convertedResponse;
     };
 
     const finalUrl = new URL(context.url, this.baseUrl);
 
-    return this.ky(finalUrl, context.options)
+    return this.ky(finalUrl, { ...context.options, body: context.options.body ? JSON.stringify(context.options.body) : undefined })
       .then((result) => chain(result, context.options))
       .catch((error) => chain(error, context.options));
   }
-
-  public post = this.doRequestWithBody("post");
-  public put = this.doRequestWithBody("put");
-  public patch = this.doRequestWithBody("patch");
-
-  public get = this.doRequestWithoutBody("get");
-  public delete = this.doRequestWithoutBody("delete");
-  public head = this.doRequestWithoutBody("head");
-  public link = this.doRequestWithoutBody("link");
-  public unlink = this.doRequestWithoutBody("unlink");
 }
 
 /**
@@ -309,22 +293,22 @@ function isStatus(given: number, against: 200 | 400 | 500 | (number & {})): bool
   }
 }
 
-async function getApiResponse({
+async function getApiResponse<T>({
   result,
   startTime,
   options,
 }: {
-  startTime: number;
   result: Awaited<ResponsePromise<unknown>>;
+  startTime: number;
   options: CustomKyOptions;
-}): Promise<ApiResponse> {
+}): Promise<ZoriktoResult<T>> {
   const endTime = toNumber(new Date());
   const duration = endTime - startTime;
 
   if (typeof result === "string") {
     const response = new Response(JSON.stringify({ aborted: result }), { status: 299, statusText: "Aborted" });
 
-    const apiResponse: ApiErrorResponse = {
+    const apiResponse: ResultError = {
       bodyUsed: response.bodyUsed,
       body: null,
       duration,
@@ -346,7 +330,7 @@ async function getApiResponse({
     if (isHTTPError(result)) {
       const response = result.response.clone();
 
-      const apiResponse: ApiErrorResponse = {
+      const apiResponse: ResultError = {
         bodyUsed: response.bodyUsed,
         body: null,
         duration,
@@ -364,7 +348,7 @@ async function getApiResponse({
     }
 
     if (isTimeoutError(result)) {
-      const apiResponse: ApiErrorResponse = {
+      const apiResponse: ResultError = {
         bodyUsed: false,
         body: null,
         duration,
@@ -384,7 +368,7 @@ async function getApiResponse({
     const issue = getIssueFromError(result);
     const originalError = result;
 
-    const apiResponse: ApiErrorResponse = {
+    const apiResponse: ResultError = {
       bodyUsed: false,
       body: null,
       duration,
@@ -404,8 +388,7 @@ async function getApiResponse({
   // @ts-expect-error: !!!
   const text = await kyResponse.body?.text();
 
-  // @ts-expect-error: !!!
-  const apiResponse: ApiResponse = {
+  const apiResponse: ResultOk<T> = {
     bodyUsed: kyResponse.bodyUsed,
     body: text?.length ? JSON.parse(text) : null,
     duration,
@@ -424,17 +407,15 @@ async function getApiResponse({
  * Fires after we convert from ky' response into our response.  Exceptions
  * raised for each monitor will be ignored.
  */
-function runMonitors(ourResponse: ApiResponse, monitors: Monitor[]): void {
+function runMonitors(response: ZoriktoResult, monitors: Monitor[]): void {
   for (const monitor of monitors) {
     try {
-      monitor(ourResponse);
-    } catch (_error) {
-      // all monitor complaints will be ignored
-    }
+      monitor(response);
+    } catch (_error) {}
   }
 }
 
-async function convertResponse({
+async function convertResponse<T>({
   result,
   startTime,
   options,
@@ -444,8 +425,8 @@ async function convertResponse({
   result: Awaited<ResponsePromise<unknown>>;
   options: CustomKyOptions;
   responseTransformers: ResponseTransformer[];
-}): Promise<ApiResponse> {
-  const apiResponse = await getApiResponse({ result, startTime, options });
+}): Promise<ZoriktoResult<T>> {
+  const apiResponse = await getApiResponse<T>({ result, startTime, options });
 
   for (const transformer of responseTransformers) {
     if (!transformer || typeof transformer !== "function") {
@@ -484,7 +465,7 @@ async function convertResponse({
  * ```
  * import ky, {isKyError} from 'ky';
  * try {
- *   const response = await ky.get('/api/data');
+ *   const result = await ky.get('/api/data');
  * } catch (error) {
  *   if (isKyError(error)) {
  *     // Handle Ky-specific errors
@@ -510,7 +491,7 @@ export function isKyError(error: unknown): error is HTTPError | TimeoutError {
  * ```
  * import ky, {isHTTPError} from 'ky';
  * try {
- *   const response = await ky.get('/api/data');
+ *   const result = await ky.get('/api/data');
  * } catch (error) {
  *   if (isHTTPError(error)) {
  *     console.log('HTTP error status:', error.response.status);
@@ -532,7 +513,7 @@ export function isHTTPError<T = unknown>(error: unknown): error is HTTPError<T> 
  * ```
  * import ky, {isTimeoutError} from 'ky';
  * try {
- *   const response = await ky.get('/api/data', { timeout: 1000 });
+ *   const result = await ky.get('/api/data', { timeout: 1000 });
  * } catch (error) {
  *   if (isTimeoutError(error)) {
  *     console.log('Request timed out:', error.request.url);
@@ -552,11 +533,12 @@ export function isTimeoutError(error: unknown): error is TimeoutError {
 
 export type ISSUE_CODE = "CLIENT_ERROR" | "SERVER_ERROR" | "TIMEOUT_ERROR" | "CONNECTION_ERROR" | "NETWORK_ERROR" | "UNKNOWN_ERROR" | "ABORT_ERROR" | "NONE";
 
-export type CustomURLSearchParams = URLSearchParams | string | [string, string][] | Record<string, string | number | boolean>;
+export type CustomUrlSearchParams = URLSearchParams | string | [string, string][] | Record<string, string | number | boolean>;
 
-export type CustomKyOptions = Omit<Options, "searchParams" | "headers"> & {
+export type CustomKyOptions = Omit<Options, "searchParams" | "headers" | "body"> & {
   searchParams?: URLSearchParams;
   headers?: Headers;
+  body?: Record<string, any> | any[] | undefined | null;
 };
 
 export type ZoriktoConfig = Options & {
@@ -568,7 +550,7 @@ export type ZoriktoConfig = Options & {
  * Creates a instance of our API using the configuration
  * @param options a configuration object which must have a non-empty 'baseUrl' property.
  */
-export type ApiErrorResponse = {
+export type ResultError = {
   bodyUsed: boolean;
   body: null;
 
@@ -582,12 +564,12 @@ export type ApiErrorResponse = {
   duration?: number;
 };
 
-export type ApiOkResponse<T> = {
+export type ResultOk<T> = {
   bodyUsed: boolean;
   body?: T;
 
   ok: true;
-  issue: null;
+  issue: typeof NONE;
   originalError: null;
 
   status: number;
@@ -596,9 +578,9 @@ export type ApiOkResponse<T> = {
   duration?: number;
 };
 
-export type ApiResponse<Res = unknown> = ApiErrorResponse | ApiOkResponse<Res>;
+export type ZoriktoResult<Response = unknown> = ResultError | ResultOk<Response>;
 
-export type Monitor = (response: ApiResponse<any>) => void;
+export type Monitor = (response: ZoriktoResult<any>) => void;
 
 type RequestTransformerParams = {
   url: string;
@@ -607,15 +589,8 @@ type RequestTransformerParams = {
 
 export type RequestTransformer = (params: RequestTransformerParams) => void | Promise<void> | ((params: RequestTransformerParams) => Promise<void>);
 
-export type ResponseTransformer = (response: ApiResponse<any>) => void | Promise<void> | ((response: ApiResponse<any>) => Promise<void>);
+export type ResponseTransformer = (result: ZoriktoResult<any>) => void | Promise<void> | ((result: ZoriktoResult<any>) => Promise<void>);
 
-export type RequestWithBody<Res = unknown> = (
-  url: string,
-  body?: any,
-  options?: Omit<CustomKyOptions, "searchParams"> & { searchParams?: CustomURLSearchParams },
-) => Promise<ApiResponse<Res>>;
-export type RequestWithoutBody<Res = unknown> = (
-  url: string,
-  params?: CustomURLSearchParams | undefined | null,
-  options?: Omit<CustomKyOptions, "searchParams"> & { searchParams?: CustomURLSearchParams },
-) => Promise<ApiResponse<Res>>;
+type ZoriktoOptions = Omit<CustomKyOptions, "searchParams"> & { searchParams?: CustomUrlSearchParams };
+
+export type ZoriktoRequest<Response = unknown> = (url: string, options?: ZoriktoOptions) => Promise<ZoriktoResult<Response>>;

@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { Zorikto } from "../src/zorikto";
+import { Zorikto } from "../lib/zorikto";
 import { createServer, getFreePort } from "./fixture/server";
 
 let port: number;
@@ -22,9 +22,9 @@ test("can be used with async/await", async (done) => {
   const client = new Zorikto({ baseUrl: `http://localhost:${port}` });
 
   try {
-    const response = await client.get("/number/200", { a: "b" });
-    expect(response.status).toBe(200);
-    expect(response.body).toStrictEqual(MOCK);
+    const result = await client.get("/number/200", { body: { a: "b" } });
+    expect(result.status).toBe(200);
+    expect(result.body).toStrictEqual(MOCK);
   } catch (error) {
     done(error);
   } finally {

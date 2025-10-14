@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { CONNECTION_ERROR, Zorikto } from "../src/zorikto";
+import { CONNECTION_ERROR, Zorikto } from "../lib/zorikto";
 import { createServer, getFreePort } from "./fixture/server";
 
 const MOCK = { a: { b: [3, 2, 1] } };
@@ -20,14 +20,15 @@ afterAll((done) => {
 
 test("changes the headers", async (done) => {
   const client = new Zorikto({ baseUrl: `http://localhost:${port}`, headers: { "X-I-LOVE-BUN": "Hello, Bun!" } });
+
   try {
-    const response1 = await client.get("/number/200");
-    expect(response1.body).toStrictEqual(MOCK);
+    const result = await client.get("/number/200");
+    expect(result.body).toStrictEqual(MOCK);
 
     // change the url
     const nextUrl = `http://127.0.0.1:${port}`;
-    client.setBaseURL(nextUrl);
-    expect(client.getBaseURL()).toBe(new URL(nextUrl).toString());
+    client.setBaseUrl(nextUrl);
+    expect(client.getBaseUrl()).toBe(new URL(nextUrl).toString());
 
     const result2 = await client.get("/number/200");
     expect(result2.body).toStrictEqual(MOCK);
@@ -35,7 +36,7 @@ test("changes the headers", async (done) => {
     await server.stop();
 
     // and try connecting back to the original one
-    client.setBaseURL(`http://BAD.localhost:${port}`);
+    client.setBaseUrl(`http://BAD.localhost:${port}`);
     const result3 = await client.get("/number/200");
     expect(result3.issue).toBe(CONNECTION_ERROR);
   } catch (error) {

@@ -1,7 +1,8 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { Zorikto } from "../src/zorikto";
+import { Zorikto } from "../lib/zorikto";
 import { createServer, getFreePort } from "./fixture/server";
 import { sleep } from "bun";
+import assert from "node:assert/strict";
 
 const MOCK = { a: { b: [3, 2, 1] } };
 
@@ -44,14 +45,14 @@ test("alters the request data", async (done) => {
 
   client.on("request", (ctx) => {
     count++;
-    ctx.options.body = JSON.stringify(BODY_OVERWRITE);
+    ctx.options.body = BODY_OVERWRITE;
   });
 
   expect(count).toBe(0);
 
   try {
     {
-      const result = await client.post("/post", MOCK);
+      const result = await client.post("/post", { body: MOCK });
       expect(result.status).toBe(200);
       expect(count).toBe(1);
       expect(result.body).toStrictEqual(BODY_OVERWRITE);
@@ -63,15 +64,15 @@ test("alters the request data", async (done) => {
         new Promise((resolve, _reject) => {
           setImmediate(() => {
             count = 69;
-            expect(JSON.parse(ctx.options.body as any)).toStrictEqual(BODY_OVERWRITE);
-            ctx.options.body = JSON.stringify(MOCK);
+            expect(ctx.options.body).toStrictEqual(BODY_OVERWRITE);
+            ctx.options.body = MOCK;
             resolve();
           });
         }),
     );
 
     {
-      const result = await client.post("/post", MOCK);
+      const result = await client.post("/post", { body: MOCK });
       expect(result.status).toBe(200);
       expect(count).toBe(69);
       expect(result.body).toStrictEqual(MOCK);
@@ -103,14 +104,16 @@ test("survives empty PUTs", async (done) => {
 
   expect(count).toBe(0);
 
-  await client
-    .put("/post", {})
-    .then((result) => {
-      expect(result.status).toBe(200);
-      expect(count).toBe(2);
-    })
-    .catch(done)
-    .finally(done);
+  try {
+    const result = await client.put("/post", { body: {} });
+
+    expect(result.status).toBe(200);
+    expect(count).toBe(2);
+  } catch (error) {
+    done(error);
+  } finally {
+    done();
+  }
 });
 
 test("fires for gets", async (done) => {
@@ -132,15 +135,17 @@ test("fires for gets", async (done) => {
 
   expect(count).toBe(0);
 
-  await client
-    .get("/number/201")
-    .then((result) => {
-      expect(result.status).toBe(201);
-      expect(count).toBe(2);
-      expect(result.body).toStrictEqual(MOCK);
-    })
-    .catch(done)
-    .finally(done);
+  try {
+    const result = await client.get("/number/201");
+
+    expect(result.status).toBe(201);
+    expect(count).toBe(2);
+    expect(result.body).toStrictEqual(MOCK);
+  } catch (error) {
+    done(error);
+  } finally {
+    done();
+  }
 });
 
 test("url can be changed", async (done) => {
@@ -150,13 +155,15 @@ test("url can be changed", async (done) => {
     ctx.url = ctx.url.replace("/201", "/200");
   });
 
-  await client
-    .get("/number/201", { x: 1 })
-    .then((result) => {
-      expect(result.status).toBe(200);
-    })
-    .catch(done)
-    .finally(done);
+  try {
+    const result = await client.get("/number/201", { searchParams: { x: 1 } });
+
+    expect(result.status).toBe(200);
+  } catch (error) {
+    done(error);
+  } finally {
+    done();
+  }
 });
 
 test("params can be added, edited, and deleted", async (done) => {
@@ -169,16 +176,18 @@ test("params can be added, edited, and deleted", async (done) => {
     ctx.options.searchParams.delete("z");
   });
 
-  await client
-    .get("/number/200", { x: 1, z: 4 })
-    .then((result) => {
-      expect(result.status).toBe(200);
-      expect(result.options?.searchParams?.get("x")).toBe("2");
-      expect(result.options?.searchParams?.get("y")).toBe("1");
-      expect(result.options?.searchParams?.get("z")).toBeNull();
-    })
-    .catch(done)
-    .finally(done);
+  try {
+    const result = await client.get("/number/200", { body: { x: 1, z: 4 } });
+
+    expect(result.status).toBe(200);
+    expect(result.options?.searchParams?.get("x")).toBe("2");
+    expect(result.options?.searchParams?.get("y")).toBe("1");
+    expect(result.options?.searchParams?.get("z")).toBeNull();
+  } catch (error) {
+    done(error);
+  } finally {
+    done();
+  }
 });
 
 test("headers can be created", async (done) => {
@@ -190,14 +199,15 @@ test("headers can be created", async (done) => {
     ctx.options.headers?.set("X-ZORIKTO", "new");
   });
 
-  await client
-    .get("/number/201", { x: 1 })
-    .then((result) => {
-      expect(result.status).toBe(201);
-      expect(result.options?.headers?.get("X-ZORIKTO")).toBe("new");
-    })
-    .catch(done)
-    .finally(done);
+  try {
+    const result = await client.get("/number/201", { searchParams: { x: 1 } });
+    expect(result.status).toBe(201);
+    expect(result.options?.headers?.get("X-ZORIKTO")).toBe("new");
+  } catch (error) {
+    done(error);
+  } finally {
+    done();
+  }
 });
 
 test("headers from creation time can be changed", async (done) => {
@@ -208,32 +218,38 @@ test("headers from creation time can be changed", async (done) => {
     expect(ctx.options?.headers?.set("X-ZORIKTO", "change"));
   });
 
-  await client
-    .get("/number/201", { x: 1 })
-    .then((result) => {
-      expect(result.status).toBe(201);
-      expect(result.options?.headers?.get("X-ZORIKTO")).toBe("change");
-    })
-    .catch(done)
-    .finally(done);
+  try {
+    const result = await client.get("/number/201", { searchParams: { x: 1 } });
+    expect(result.status).toBe(201);
+    expect(result.options?.headers?.get("X-ZORIKTO")).toBe("change");
+  } catch (error) {
+    done(error);
+  } finally {
+    done();
+  }
 });
 
 test("headers can be deleted", async (done) => {
   const client = new Zorikto({ baseUrl: `http://localhost:${port}`, headers: { "X-ZORIKTO": "omg" } });
 
   client.on("request", (ctx) => {
-    expect(ctx.options?.headers?.get("X-ZORIKTO")).toBe("omg");
-    ctx.options?.headers?.delete("X-ZORIKTO");
+    assert(ctx.options?.headers instanceof Headers);
+
+    expect(ctx.options.headers.get("X-ZORIKTO")).toBe("omg");
+    ctx.options.headers.delete("X-ZORIKTO");
+    expect(ctx.options.headers.get("X-ZORIKTO")).toBeNull();
   });
 
-  await client
-    .get("/number/201", { x: 1 })
-    .then((result) => {
-      expect(result.status).toBe(201);
-      expect(result.options?.headers?.get("X-ZORIKTO")).toBeNull();
-    })
-    .catch(done)
-    .finally(done);
+  try {
+    const result = await client.get("/number/201", { searchParams: { x: 1 } });
+
+    expect(result.status).toBe(201);
+    expect(result.options?.headers?.get("X-ZORIKTO")).toBeNull();
+  } catch (error) {
+    done(error);
+  } finally {
+    done();
+  }
 });
 
 test("serial async", async (done) => {
@@ -248,10 +264,10 @@ test("serial async", async (done) => {
       fired = true;
     });
 
-    const response = await client.get("/number/200");
+    const result = await client.get("/number/200");
 
-    expect(response.ok).toBeTrue();
-    expect(response.status).toBe(201);
+    expect(result.ok).toBeTrue();
+    expect(result.status).toBe(201);
     expect(fired).toBeTrue();
   } catch (error) {
     done(error);
@@ -289,8 +305,8 @@ test("transformers should run serially", async (done) => {
   });
 
   try {
-    await client.post("/post", MOCK).then((response) => {
-      expect(response.status).toBe(200);
+    await client.post("/post", { body: MOCK }).then((result) => {
+      expect(result.status).toBe(200);
       expect(first).toBe(true);
       expect(second).toBe(true);
     });
@@ -314,7 +330,7 @@ test("url can be changed", async (done) => {
   });
 
   try {
-    const result = await client.get("/number/201", { x: 1 });
+    const result = await client.get("/number/201", { body: { x: 1 } });
     expect(result.status).toBe(200);
   } catch (error) {
     done(error);
@@ -339,16 +355,17 @@ test("params can be added, edited, and deleted", async (done) => {
     });
   });
 
-  await client
-    .get("/number/200", { x: 1, z: 4 })
-    .then((result) => {
-      expect(result.status).toBe(200);
-      expect(result.options?.searchParams?.get("x")).toBe("2");
-      expect(result.options?.searchParams?.get("y")).toBe("1");
-      expect(result.options?.searchParams?.get("z")).toBeNull();
-    })
-    .catch(done)
-    .finally(done);
+  try {
+    const result = await client.get("/number/200", { body: { x: 1, z: 4 } });
+    expect(result.status).toBe(200);
+    expect(result.options?.searchParams?.get("x")).toBe("2");
+    expect(result.options?.searchParams?.get("y")).toBe("1");
+    expect(result.options?.searchParams?.get("z")).toBeNull();
+  } catch (error) {
+    done(error);
+  } finally {
+    done();
+  }
 });
 
 test("headers can be created", async (done) => {
@@ -365,14 +382,16 @@ test("headers can be created", async (done) => {
     });
   });
 
-  await client
-    .get("/number/201", { x: 1 })
-    .then((result) => {
-      expect(result.status).toBe(201);
-      expect(result.options?.headers?.get("X-ZORIKTO")).toBe("new");
-    })
-    .catch(done)
-    .finally(done);
+  try {
+    const result = await client.get("/number/201", { body: { x: 1 } });
+
+    expect(result.status).toBe(201);
+    expect(result.options?.headers?.get("X-ZORIKTO")).toBe("new");
+  } catch (error) {
+    done(error);
+  } finally {
+    done();
+  }
 });
 
 test("headers from creation time can be changed", async (done) => {
@@ -387,15 +406,16 @@ test("headers from creation time can be changed", async (done) => {
       });
     });
   });
+  try {
+    const result = await client.get("/number/201", { body: { x: 1 } });
 
-  await client
-    .get("/number/201", { x: 1 })
-    .then((result) => {
-      expect(result.status).toBe(201);
-      expect(result.options?.headers?.get("X-ZORIKTO")).toBe("change");
-    })
-    .catch(done)
-    .finally(done);
+    expect(result.status).toBe(201);
+    expect(result.options?.headers?.get("X-ZORIKTO")).toBe("change");
+  } catch (error) {
+    done(error);
+  } finally {
+    done();
+  }
 });
 
 test("headers can be deleted", async (done) => {
@@ -413,12 +433,14 @@ test("headers can be deleted", async (done) => {
     });
   });
 
-  await client
-    .get("/number/201", { x: 1 })
-    .then((result) => {
-      expect(result.status).toBe(201);
-      expect(result.options?.headers?.get("X-ZORIKTO")).toBeNull();
-    })
-    .catch(done)
-    .finally(done);
+  try {
+    const result = await client.get("/number/201", { body: { x: 1 } });
+
+    expect(result.status).toBe(201);
+    expect(result.options?.headers?.get("X-ZORIKTO")).toBeNull();
+  } catch (error) {
+    done(error);
+  } finally {
+    done();
+  }
 });
