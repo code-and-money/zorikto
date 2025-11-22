@@ -1,17 +1,17 @@
 {
   "name": "@codeandmoney/zorikto",
-  "version": "0.0.0-rc.0",
+  "version": "0.0.0-rc.1",
   "license": "MIT",
   "exports": {
     "default": "./lib/zorikto.ts",
     "import": "./lib/zorikto.ts"
   },
   "dependencies": {
-    "ky": "1.12.0"
+    "ky": "1.14.0"
   },
   "devDependencies": {
-    "@types/bun": "^1.3.0",
-    "@types/node": "^24.7.2"
+    "@types/bun": "^1.3.3",
+    "@types/node": "^24.10.1"
   },
   "publishConfig": {
     "access": "public"
